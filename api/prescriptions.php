@@ -13,10 +13,13 @@ $SEL = "SELECT p.id,p.patient_name AS patientName,p.patient_age AS patientAge,
     p.on_examination AS onExamination,p.advice,p.status,
     p.reviewed_at AS reviewedAt,p.review_notes AS reviewNotes,
     p.created_at AS createdAt,p.updated_at AS updatedAt,
+    p.doctor_id AS docId,
     hw.id AS hwId,hw.name AS hwName,
+    d.id AS docAssignId,d.name AS docAssignName,
     dr.id AS drId,dr.name AS drName
     FROM prescriptions p
     JOIN users hw ON hw.id=p.health_worker_id
+    LEFT JOIN users d ON d.id=p.doctor_id
     LEFT JOIN users dr ON dr.id=p.reviewed_by_id";
 
 function fmtRx(array $r, array $items=[]): array {
@@ -26,6 +29,7 @@ function fmtRx(array $r, array $items=[]): array {
         'reviewedAt'=>$r['reviewedAt'],'reviewNotes'=>$r['reviewNotes'],
         'createdAt'=>$r['createdAt'],'updatedAt'=>$r['updatedAt'],
         'healthWorker'=>['id'=>$r['hwId'],'name'=>$r['hwName']],
+        'doctor'=>$r['docAssignId']?['id'=>$r['docAssignId'],'name'=>$r['docAssignName']]:null,
         'reviewedBy'=>$r['drId']?['id'=>$r['drId'],'name'=>$r['drName']]:null,
         'items'=>$items];
 }
@@ -81,10 +85,16 @@ if ($method==='POST') {
     $sm->execute($medIds);
     if ($sm->rowCount()!==count($medIds)) json_error('BAD_REQUEST','One or more medicines are not in the approved list');
 
+    // Get assigned doctor for this health worker
+    $da=$pdo->prepare("SELECT doctor_id FROM doctor_assignments WHERE health_worker_id=:hwid");
+    $da->execute([':hwid'=>$user['id']]);
+    $doctorAssignment=$da->fetch();
+    $assignedDoctor=$doctorAssignment?$doctorAssignment['doctor_id']:null;
+
     $rxId=bin2hex(random_bytes(8));
     $st=in_array($b['status']??'',['DRAFT','SUBMITTED'])?$b['status']:'DRAFT';
-    $pdo->prepare("INSERT INTO prescriptions(id,health_worker_id,patient_name,patient_age,patient_gender,chief_complaints,on_examination,advice,status) VALUES(:id,:hw,:pn,:pa,:pg,:cc,:oe,:adv,:st)")
-        ->execute([':id'=>$rxId,':hw'=>$user['id'],':pn'=>clean($b['patientName']),':pa'=>(int)$b['patientAge'],':pg'=>$b['patientGender'],':cc'=>clean($b['chiefComplaints']),':oe'=>isset($b['onExamination'])?clean($b['onExamination']):null,':adv'=>isset($b['advice'])?clean($b['advice']):null,':st'=>$st]);
+    $pdo->prepare("INSERT INTO prescriptions(id,health_worker_id,doctor_id,patient_name,patient_age,patient_gender,chief_complaints,on_examination,advice,status) VALUES(:id,:hw,:doc,:pn,:pa,:pg,:cc,:oe,:adv,:st)")
+        ->execute([':id'=>$rxId,':hw'=>$user['id'],':doc'=>$assignedDoctor,':pn'=>clean($b['patientName']),':pa'=>(int)$b['patientAge'],':pg'=>$b['patientGender'],':cc'=>clean($b['chiefComplaints']),':oe'=>isset($b['onExamination'])?clean($b['onExamination']):null,':adv'=>isset($b['advice'])?clean($b['advice']):null,':st'=>$st]);
     foreach ($b['items'] as $item) {
         $pdo->prepare("INSERT INTO prescription_items(id,prescription_id,medicine_id,dose,frequency,duration,instructions) VALUES(:id,:rx,:m,:d,:f,:dur,:inst)")
             ->execute([':id'=>bin2hex(random_bytes(8)),':rx'=>$rxId,':m'=>$item['medicineId'],':d'=>clean($item['dose']),':f'=>clean($item['frequency']),':dur'=>clean($item['duration']),':inst'=>isset($item['instructions'])?clean($item['instructions']):null]);
