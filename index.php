@@ -12,10 +12,14 @@ session_write_close();
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#2998ab"/>
 <title>BPDA Telemedicine App</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="assets/css/style.css"/>
+<link rel="stylesheet" href="assets/css/mobile.css"/>
 </head>
 <body class="<?= $isLoggedIn ? 'app-mode' : 'auth-mode' ?>">
 
@@ -89,13 +93,21 @@ session_write_close();
       <div class="sb-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
       </div>
-      <div>
+      <div class="desktop-only">
         <div class="sb-name">BPDA Telemedicine</div>
         <div class="sb-sub">Smart App Platform</div>
       </div>
     </div>
     <nav class="sb-nav" id="sb-nav"></nav>
-    <div class="sb-footer">
+    <button class="mobile-menu-btn mobile-only" onclick="toggleMobileMenu()" title="Toggle Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+      Menu
+    </button>
+    <div class="sb-footer desktop-only">
       <div class="sb-user">
         <div class="sb-avatar"><?= strtoupper(substr($user['name'],0,1)) ?></div>
         <div class="sb-info">
@@ -107,7 +119,7 @@ session_write_close();
         <?= $user['role']==='HEALTH_WORKER' ? 'Health Worker' : ucfirst(strtolower($user['role'])) ?>
       </span>
       <button class="sb-logout" onclick="doLogout()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline poi[...]
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         Sign out
       </button>
     </div>
@@ -121,6 +133,26 @@ session_write_close();
 <script>
 window.ROLE = '<?= $user['role'] ?>';
 const USER = <?= json_encode(['id'=>$user['id'],'name'=>$user['name'],'role'=>$user['role'],'canWritePrescription'=>$user['canWritePrescription']]) ?>;
+
+function toggleMobileMenu() {
+  const nav = document.getElementById('sb-nav');
+  const btn = document.querySelector('.mobile-menu-btn');
+  nav.classList.toggle('mobile-open');
+  btn.classList.toggle('active');
+}
+
+// Close menu when an item is clicked
+document.addEventListener('DOMContentLoaded', function() {
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const nav = document.getElementById('sb-nav');
+      const btn = document.querySelector('.mobile-menu-btn');
+      nav.classList.remove('mobile-open');
+      btn.classList.remove('active');
+    });
+  });
+});
 </script>
 <?php endif; ?>
 
