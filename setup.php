@@ -72,11 +72,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($meds as [$id,$name,$gen,$form]) $mStmt->execute([':id'=>$id,':name'=>$name,':gen'=>$gen,':form'=>$form]);
 
             // Sample prescription
-            $pdo->exec("INSERT IGNORE INTO prescriptions(id,health_worker_id,patient_name,patient_age,patient_gender,chief_complaints,on_examination,advice,status,reviewed_by_id,reviewed_at,review_notes)
-                VALUES('rx-001','u-hw-001','Mohammad Hossain',45,'male','Fever, cough, sore throat for 3 days','Temp: 38.5°C, Throat congested','Rest, drink plenty of fluids','REVIEWED','u-doc-001',NOW(),'Approved.')");
+            $pdo->exec("INSERT IGNORE INTO prescriptions(id,health_worker_id,patient_name,patient_age,patient_gender,prescription_type,chief_complaints,on_examination,advice,status,reviewed_by_id,reviewed_at,review_notes)
+                VALUES('rx-001','u-hw-001','Mohammad Hossain',45,'male','GENERAL','Fever, cough, sore throat for 3 days','Temp: 38.5°C, Throat congested','Rest, drink plenty of fluids','REVIEWED','u-doc-001',NOW(),'Approved.')");
             $pdo->exec("INSERT IGNORE INTO prescription_items(id,prescription_id,medicine_id,dose,frequency,duration,instructions)
                 VALUES('pi-001','rx-001','m-001','1 tablet','3 times daily','5 days','After meals'),
                       ('pi-002','rx-001','m-002','1 capsule','2 times daily','7 days','After meals')");
+
+            // Prescription Templates (GENERAL & DENTAL)
+            $templates=[
+                ['id'=>'tpl-general','name'=>'General Practice Prescription','type'=>'GENERAL','content'=>json_encode(['title'=>'General Practice Prescription','sections'=>['Patient Information','Chief Complaints','On Examination','Diagnosis','Medicines','Advice & Follow-up']])],
+                ['id'=>'tpl-dental','name'=>'Dental Prescription','type'=>'DENTAL','content'=>json_encode(['title'=>'Dental Prescription','sections'=>['Patient Information','Tooth Number/Area','Chief Complaint','Examination Findings','Diagnosis','Treatment Plan','Medications','Post-operative Care']])],
+            ];
+            $tStmt=$pdo->prepare("INSERT IGNORE INTO prescription_templates(id,name,description,template_content,created_by_id,status,approved_by_id,approved_at) 
+                VALUES(:id,:name,:desc,:content,:creator,'APPROVED',:approver,NOW())");
+            foreach($templates as $tpl) 
+                $tStmt->execute([':id'=>$tpl['id'],':name'=>$tpl['name'],':desc'=>'Default '.$tpl['type'].' template',':content'=>$tpl['content'],':creator'=>'u-admin-001',':approver'=>'u-admin-001']);
 
             // Write DB config
             $cfg = file_get_contents(__DIR__ . '/config/database.php');

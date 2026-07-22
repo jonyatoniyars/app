@@ -10,7 +10,7 @@ $id     = gp('id');
 
 $SEL = "SELECT p.id,p.patient_name AS patientName,p.patient_age AS patientAge,
     p.patient_gender AS patientGender,p.chief_complaints AS chiefComplaints,
-    p.on_examination AS onExamination,p.advice,p.status,
+    p.on_examination AS onExamination,p.advice,p.status,p.prescription_type AS prescriptionType,
     p.reviewed_at AS reviewedAt,p.review_notes AS reviewNotes,
     p.created_at AS createdAt,p.updated_at AS updatedAt,
     p.doctor_id AS docId,
@@ -25,7 +25,7 @@ $SEL = "SELECT p.id,p.patient_name AS patientName,p.patient_age AS patientAge,
 function fmtRx(array $r, array $items=[]): array {
     return ['id'=>$r['id'],'patientName'=>$r['patientName'],'patientAge'=>(int)$r['patientAge'],
         'patientGender'=>$r['patientGender'],'chiefComplaints'=>$r['chiefComplaints'],
-        'onExamination'=>$r['onExamination'],'advice'=>$r['advice'],'status'=>$r['status'],
+        'onExamination'=>$r['onExamination'],'advice'=>$r['advice'],'status'=>$r['status'],'prescriptionType'=>$r['prescriptionType']??'GENERAL',
         'reviewedAt'=>$r['reviewedAt'],'reviewNotes'=>$r['reviewNotes'],
         'createdAt'=>$r['createdAt'],'updatedAt'=>$r['updatedAt'],
         'healthWorker'=>['id'=>$r['hwId'],'name'=>$r['hwName']],
@@ -37,7 +37,7 @@ function fmtRx(array $r, array $items=[]): array {
 // GET list
 if ($method==='GET' && !$id) {
     $page=max(1,(int)gp('page',1)); $limit=min(50,max(1,(int)gp('limit',20)));
-    $search=gp('search',''); $status=gp('status','');
+    $search=gp('search',''); $status=gp('status',''); $type=gp('type','');
     $where=[]; $params=[];
 
     if ($user['role']==='HEALTH_WORKER') { $where[]="p.health_worker_id=:hwid"; $params[':hwid']=$user['id']; }
@@ -50,6 +50,7 @@ if ($method==='GET' && !$id) {
         foreach ($hwIds as $i=>$v) $params[":hw$i"]=$v;
     }
     if ($status && in_array($status,['DRAFT','SUBMITTED','REVIEWED'])) { $where[]="p.status=:st"; $params[':st']=$status; }
+    if ($type && in_array($type,['GENERAL','DENTAL'])) { $where[]="p.prescription_type=:type"; $params[':type']=$type; }
     if ($search) { $where[]="(p.patient_name LIKE :s OR p.chief_complaints LIKE :s)"; $params[':s']="%$search%"; }
 
     global $SEL;
@@ -92,9 +93,10 @@ if ($method==='POST') {
     $assignedDoctor=$doctorAssignment?$doctorAssignment['doctor_id']:null;
 
     $rxId=bin2hex(random_bytes(8));
-    $st=in_array($b['status']??'',['DRAFT','SUBMITTED'])?$b['status']:'DRAFT';
-    $pdo->prepare("INSERT INTO prescriptions(id,health_worker_id,doctor_id,patient_name,patient_age,patient_gender,chief_complaints,on_examination,advice,status) VALUES(:id,:hw,:doc,:pn,:pa,:pg,:cc,:oe,:adv,:st)")
-        ->execute([':id'=>$rxId,':hw'=>$user['id'],':doc'=>$assignedDoctor,':pn'=>clean($b['patientName']),':pa'=>(int)$b['patientAge'],':pg'=>$b['patientGender'],':cc'=>clean($b['chiefComplaints']),':oe'=>isset($b['onExamination'])?clean($b['onExamination']):null,':adv'=>isset($b['advice'])?clean($b['advice']):null,':st'=>$st]);
+     $st=in_array($b['status']??'',['DRAFT','SUBMITTED'])?$b['status']:'DRAFT';
+    $pt=in_array($b['prescriptionType']??'',['GENERAL','DENTAL'])?$b['prescriptionType']:'GENERAL';
+    $pdo->prepare("INSERT INTO prescriptions(id,health_worker_id,doctor_id,patient_name,patient_age,patient_gender,prescription_type,chief_complaints,on_examination,advice,status) VALUES(:id,:hw,:doc,:pn,:pa,:pg,:pt,:cc,:oe,:adv,:st)")
+        ->execute([':id'=>$rxId,':hw'=>$user['id'],':doc'=>$assignedDoctor,':pn'=>clean($b['patientName']),':pa'=>(int)$b['patientAge'],':pg'=>$b['patientGender'],':pt'=>$pt,':cc'=>clean($b['chiefComplaints']),':oe'=>isset($b['onExamination'])?clean($b['onExamination']):null,':adv'=>isset($b['advice'])?clean($b['advice']):null,':st'=>$st]);
     foreach ($b['items'] as $item) {
         $pdo->prepare("INSERT INTO prescription_items(id,prescription_id,medicine_id,dose,frequency,duration,instructions) VALUES(:id,:rx,:m,:d,:f,:dur,:inst)")
             ->execute([':id'=>bin2hex(random_bytes(8)),':rx'=>$rxId,':m'=>$item['medicineId'],':d'=>clean($item['dose']),':f'=>clean($item['frequency']),':dur'=>clean($item['duration']),':inst'=>isset($item['instructions'])?clean($item['instructions']):null]);

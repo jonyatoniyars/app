@@ -149,8 +149,8 @@ async function pgDashboard(){
 function sc(v,l,i,c){return`<div class="stat-card"><div class="stat-icon ${c}">${svg(i)}</div><div><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div></div>`;}
 
 /* ── PRESCRIPTIONS LIST ───────────────────────── */
-async function pgRxList(page=1,search='',status=''){
-  const url=`api/prescriptions.php?page=${page}&limit=20${search?'&search='+encodeURIComponent(search):''}${status?'&status='+status:''}`;
+async function pgRxList(page=1,search='',status='',type=''){
+  const url=`api/prescriptions.php?page=${page}&limit=20${search?'&search='+encodeURIComponent(search):''}${status?'&status='+status:''}${type?'&type='+type:''}`;
   const res=await api(url);
   if(!res.success){setPage(errPage(em(res),"pgRxList()"));return;}
   const rows=res.data||[],meta=res.meta||{};
@@ -161,14 +161,16 @@ async function pgRxList(page=1,search='',status=''){
     </div>
     <div class="filter-bar">
       <div class="search-wrap"><svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I.search}</svg>
-        <input class="search-input" id="rx-s" placeholder="Search patient or complaints…" value="${search}" onkeydown="if(event.key==='Enter')pgRxList(1,this.value,'${status}')"/>
+        <input class="search-input" id="rx-s" placeholder="Search patient or complaints…" value="${search}" onkeydown="if(event.key==='Enter')pgRxList(1,this.value,'${status}','${type}')"/>
       </div>
-      <div class="pill-row">${['','DRAFT','SUBMITTED','REVIEWED'].map((f,i)=>`<button class="pill${status===f?' active':''}" onclick="pgRxList(1,document.getElementById('rx-s').value,'${f}')">${['All','Draft','Submitted','Reviewed'][i]}</button>`).join('')}</div>
+      <div class="pill-row">${['','DRAFT','SUBMITTED','REVIEWED'].map((f,i)=>`<button class="pill${status===f?' active':''}" onclick="pgRxList(1,document.getElementById('rx-s').value,'${f}','${type}')">${['All','Draft','Submitted','Reviewed'][i]}</button>`).join('')}</div>
+      <div class="pill-row">${['','GENERAL','DENTAL'].map((f,i)=>`<button class="pill${type===f?' active':''}" style="margin-left:8px" onclick="pgRxList(1,document.getElementById('rx-s').value,'${status}','${f}')">${[f?f:'All Types',f].includes(f)?f:'All Types'}</button>`).join('')}</div>
     </div>
     <div class="table-wrap">
       ${rows.length===0?`<div class="empty-state">${svg('file')}<h3>No prescriptions found</h3><p>None match your filters</p></div>`:`
-      <table><thead><tr><th>Patient</th><th>Age</th><th>Chief Complaints</th><th>Status</th><th>Health Worker</th><th>Date</th><th></th></tr></thead>
+      <table><thead><tr><th>Type</th><th>Patient</th><th>Age</th><th>Chief Complaints</th><th>Status</th><th>Health Worker</th><th>Date</th><th></th></tr></thead>
       <tbody>${rows.map(r=>`<tr>
+        <td><span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${r.prescriptionType==='DENTAL'?'#fef3c7':'#dbeafe'};color:${r.prescriptionType==='DENTAL'?'#92400e':'#1e40af'};font-size:11px;font-weight:600">${r.prescriptionType==='DENTAL'?'🦷 Dental':'General'}</span></td>
         <td class="fw">${r.patientName}</td><td>${r.patientAge} y</td>
         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#475569">${r.chiefComplaints}</td>
         <td>${badge(r.status)}</td><td class="text-muted text-sm">${r.healthWorker?.name||'—'}</td>
@@ -176,7 +178,7 @@ async function pgRxList(page=1,search='',status=''){
         <td><a href="#" onclick="go('rx-${r.id}')" style="color:#2998ab;font-size:12px;font-weight:600;text-decoration:none">View →</a></td>
       </tr>`).join('')}</tbody></table>`}
     </div>
-    ${(meta.totalPages||1)>1?`<div class="flex-between" style="margin-top:14px"><span class="text-muted text-sm">Page ${meta.page} of ${meta.totalPages}</span><div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" ${page<=1?'disabled':''} onclick="pgRxList(${page-1},'${search}','${status}')">← Prev</button><button class="btn btn-secondary btn-sm" ${page>=(meta.totalPages||1)?'disabled':''} onclick="pgRxList(${page+1},'${search}','${status}')">Next →</button></div></div>`:''}`);
+    ${(meta.totalPages||1)>1?`<div class="flex-between" style="margin-top:14px"><span class="text-muted text-sm">Page ${meta.page} of ${meta.totalPages}</span><div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" ${page<=1?'disabled':''} onclick="pgRxList(${page-1},'${search}','${status}','${type}')">← Prev</button><button class="btn btn-secondary btn-sm" ${page>=(meta.totalPages||1)?'disabled':''} onclick="pgRxList(${page+1},'${search}','${status}','${type}')">Next →</button></div></div>`:''}`);
 }
 
 /* ── PRESCRIPTION DETAIL ──────────────────────── */
@@ -202,6 +204,7 @@ async function pgRxDetail(id){
         <div class="rx-meta">Rx: <strong>${rx.id.slice(-8).toUpperCase()}</strong><br>${fd(rx.createdAt)}</div>
       </div>
       <div class="rx-patient-row">
+        <div><div class="rx-field-label">Type</div><div class="rx-field-val">${rx.prescriptionType==='DENTAL'?'🦷 Dental Prescription':'General Practice'}</div></div>
         <div><div class="rx-field-label">Patient</div><div class="rx-field-val">${rx.patientName}</div></div>
         <div><div class="rx-field-label">Age / Gender</div><div class="rx-field-val">${rx.patientAge} yrs / ${rx.patientGender}</div></div>
         <div><div class="rx-field-label">Health Worker</div><div class="rx-field-val">${rx.healthWorker?.name}</div></div>
