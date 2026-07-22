@@ -224,14 +224,15 @@ async function reviewRx(id){
 }
 
 /* ── NEW PRESCRIPTION ─────────────────────────── */
-let rxStep=0,rxMeds=[],rxItems=[{medicineId:'',dose:'1 tablet',frequency:'Once daily',duration:'5 days',instructions:''}],_rxd={};
+let rxStep=0,rxMeds=[],rxItems=[{medicineId:'',dose:'1 tablet',frequency:'Once daily',duration:'5 days',instructions:''}],_rxd={prescriptionType:'GENERAL'};
 async function pgNewRx(){
   if(!rxMeds.length){const r=await api('api/admin/medicines.php?limit=200');if(r.success)rxMeds=r.data;}
   const steps=['Patient Info','Clinical Notes','Medicines','Review & Submit'];
   const bar=steps.map((_,i)=>`<div class="step-seg${i<=rxStep?' done':''}"></div>`).join('');
   let body='';
   if(rxStep===0){
-    body=`<div class="form-group"><label class="form-label">Patient Name *</label><input class="form-input" id="pn" value="${_rxd.patientName||''}" placeholder="Full name"/></div>
+    body=`<div class="form-group"><label class="form-label">Prescription Type *</label><select class="form-input" id="pt" onchange="_rxd.prescriptionType=this.value"><option value="GENERAL" ${_rxd.prescriptionType==='GENERAL'?'selected':''}>General Practice</option><option value="DENTAL" ${_rxd.prescriptionType==='DENTAL'?'selected':''}>Dental</option></select></div>
+    <div class="form-group"><label class="form-label">Patient Name *</label><input class="form-input" id="pn" value="${_rxd.patientName||''}" placeholder="Full name"/></div>
     <div class="grid-2"><div class="form-group"><label class="form-label">Age *</label><input class="form-input" id="pa" type="number" min="0" max="150" value="${_rxd.patientAge||''}"/></div>
     <div class="form-group"><label class="form-label">Gender</label><select class="form-input" id="pg"><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></div></div>`;
   }else if(rxStep===1){
@@ -255,12 +256,13 @@ async function pgNewRx(){
     </div>`).join('')+`<button class="btn btn-secondary btn-sm" onclick="addRxItem()">${svg('plus')} Add Medicine</button>`;
   }else{
     body=`<div style="display:flex;flex-direction:column;gap:14px;font-size:13px">
-      <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Patient</div><div>${_rxd.patientName} — ${_rxd.patientAge} y — ${_rxd.patientGender}</div></div>
-      <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">C/C</div><div>${_rxd.chiefComplaints}</div></div>
-      ${_rxd.onExamination?`<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">O/E</div><div>${_rxd.onExamination}</div></div>`:''}
-      <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Rx</div>${rxItems.map((x,i)=>{const m=rxMeds.find(m=>m.id===x.medicineId);return`<div>${i+1}. ${m?.name||'—'} — ${x.dose}, ${x.frequency}, ${x.duration}${x.instructions?` (${x.instructions})`:''}</div>`;}).join('')}</div>
-      ${_rxd.advice?`<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Advice</div><div>${_rxd.advice}</div></div>`:''}
-    </div>`;
+     <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Type</div><div>${_rxd.prescriptionType==='DENTAL'?'🦷 Dental':'General Practice'}</div></div>
+     <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Patient</div><div>${_rxd.patientName} — ${_rxd.patientAge} y — ${_rxd.patientGender}</div></div>
+     <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">C/C</div><div>${_rxd.chiefComplaints}</div></div>
+     ${_rxd.onExamination?`<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">O/E</div><div>${_rxd.onExamination}</div></div>`:''}
+     <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Rx</div>${rxItems.map((x,i)=>{const m=rxMeds.find(m=>m.id===x.medicineId);return`<div>${i+1}. ${m?.name||'—'} — ${x.dose}, ${x.frequency}, ${x.duration}${x.instructions?` (${x.instructions})`:''}</div>`;}).join('')}</div>
+     ${_rxd.advice?`<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:#94a3b8;margin-bottom:3px">Advice</div><div>${_rxd.advice}</div></div>`:''}
+   </div>`;
   }
   setPage(`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
@@ -278,14 +280,14 @@ function addRxItem(){rxItems.push({medicineId:'',dose:'1 tablet',frequency:'Once
 function delRxItem(i){rxItems.splice(i,1);pgNewRx();}
 function rxPrev(){if(rxStep>0){rxStep--;pgNewRx();}}
 function rxNext(){
-  if(rxStep===0){const n=document.getElementById('pn')?.value.trim(),a=document.getElementById('pa')?.value;if(!n){toast('Patient name required','error');return;}if(!a){toast('Age required','error');return;}_rxd={..._rxd,patientName:n,patientAge:parseInt(a),patientGender:document.getElementById('pg').value};}
+  if(rxStep===0){const n=document.getElementById('pn')?.value.trim(),a=document.getElementById('pa')?.value;if(!n){toast('Patient name required','error');return;}if(!a){toast('Age required','error');return;}_rxd={..._rxd,prescriptionType:document.getElementById('pt')?.value||'GENERAL',patientName:n,patientAge:parseInt(a),patientGender:document.getElementById('pg').value};}
   else if(rxStep===1){const cc=document.getElementById('cc')?.value.trim();if(!cc){toast('Chief complaints required','error');return;}_rxd={..._rxd,chiefComplaints:cc,onExamination:document.getElementById('oe')?.value.trim()||'',advice:document.getElementById('adv')?.value.trim()||''};}
   else if(rxStep===2){if(rxItems.some(x=>!x.medicineId)){toast('Select a medicine for each entry','error');return;}}
   rxStep++;pgNewRx();
 }
 async function submitRx(status){
   const res=await api('api/prescriptions.php',{method:'POST',body:JSON.stringify({..._rxd,status,items:rxItems})});
-  if(res.success){toast(status==='SUBMITTED'?'Submitted!':'Draft saved!');rxStep=0;rxItems=[{medicineId:'',dose:'1 tablet',frequency:'Once daily',duration:'5 days',instructions:''}];_rxd={};go(`rx-${res.data.id}`);}
+  if(res.success){toast(status==='SUBMITTED'?'Submitted!':'Draft saved!');rxStep=0;rxItems=[{medicineId:'',dose:'1 tablet',frequency:'Once daily',duration:'5 days',instructions:''}];_rxd={prescriptionType:'GENERAL'};go(`rx-${res.data.id}`);}
   else toast(em(res),'error');
 }
 

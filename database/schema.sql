@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS `prescriptions` (
   `patient_name`     VARCHAR(100) NOT NULL,
   `patient_age`      TINYINT UNSIGNED NOT NULL,
   `patient_gender`   ENUM('male','female','other') NOT NULL,
+  `prescription_type` ENUM('GENERAL','DENTAL') NOT NULL DEFAULT 'GENERAL',
   `chief_complaints` TEXT         NOT NULL,
   `on_examination`   TEXT         NULL,
   `advice`           TEXT         NULL,
@@ -69,6 +70,7 @@ CREATE TABLE IF NOT EXISTS `prescriptions` (
   INDEX `idx_doctor` (`doctor_id`),
   INDEX `idx_hw`     (`health_worker_id`),
   INDEX `idx_status` (`status`),
+  INDEX `idx_type`   (`prescription_type`),
   FOREIGN KEY (`doctor_id`)        REFERENCES `users`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`health_worker_id`) REFERENCES `users`(`id`),
   FOREIGN KEY (`reviewed_by_id`)   REFERENCES `users`(`id`) ON DELETE SET NULL
