@@ -217,6 +217,18 @@ async function pgRxDetail(id){
         <tbody>${(rx.items||[]).map((x,i)=>`<tr><td style="color:#94a3b8">${i+1}.</td><td class="med-name">${x.medicineName}</td><td>${x.dose}</td><td>${x.frequency}</td><td>${x.duration}</td><td style="font-style:italic;color:#94a3b8">${x.instructions||'—'}</td></tr>`).join('')}</tbody></table>
       </div>
       ${rx.advice?`<div style="margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0"><div class="rx-section-lbl">Advice</div><div style="font-size:13px">${rx.advice}</div></div>`:''}
+      <div class="rx-collab-section" style="margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:14px;font-weight:600">📄 Collaborative Editor</span>
+          <span class="badge-info" style="font-size:11px;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px">Beta</span>
+        </div>
+        <div id="rx-gdoc-status" style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;color:#475569">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span>No collaborative document yet</span>
+            <button class="btn btn-sm btn-secondary" onclick="createGoogleDoc('${rx.id}')" style="margin:0">${svg('link')} Link Google Docs</button>
+          </div>
+        </div>
+      </div>
       <div class="rx-sig"><div class="rx-sig-block"><div class="rx-sig-line"></div>Health Worker Signature</div><div class="rx-sig-block"><div class="rx-sig-line"></div>Doctor Seal / Sign</div></div>
     </div>`);
 }
@@ -224,6 +236,45 @@ async function reviewRx(id){
   const notes=prompt('Review notes (optional):')||'';
   const res=await api(`api/prescriptions.php?id=${id}`,{method:'PATCH',body:JSON.stringify({reviewNotes:notes})});
   if(res.success){toast('Reviewed!');go(`rx-${id}`);}else toast(em(res),'error');
+}
+
+/* ── GOOGLE DOCS INTEGRATION ──────────────────── */
+async function createGoogleDoc(rxId){
+  if(!confirm('Create a new collaborative Google Doc for this prescription?\n\nYou will be able to share it with the assigned doctor and health workers.')) return;
+  
+  const title=prompt('Document title (e.g. "Prescription - Patient Name"):') || `Prescription - ${rxId}`;
+  if(!title) return;
+  
+  const res=await api('api/google/docs.php',{
+    method:'POST',
+    body:JSON.stringify({prescriptionId:rxId,title})
+  });
+  
+  if(!res.success) {
+    if(em(res).includes('Google OAuth')) {
+      toast('Please connect your Google account first','error');
+      window.location.href='api/google/login.php';
+    } else {
+      toast(em(res),'error');
+    }
+    return;
+  }
+  
+  toast('Google Doc created! Opening in new tab...');
+  window.open(res.data.docUrl,'_blank');
+  setTimeout(()=>go(`rx-${rxId}`),1000);
+}
+
+async function shareGoogleDoc(docId){
+  const email=prompt('Enter email address to share with:');
+  if(!email) return;
+  
+  const res=await api('api/google/docs.php',{
+    method:'PATCH',
+    body:JSON.stringify({docId,email})
+  });
+  
+  if(res.success){toast('Document shared!');} else toast(em(res),'error');
 }
 
 /* ── NEW PRESCRIPTION ─────────────────────────── */

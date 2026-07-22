@@ -155,6 +155,20 @@ CREATE TABLE IF NOT EXISTS `google_docs_integrations` (
   FOREIGN KEY (`prescription_id`) REFERENCES `prescriptions`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `google_oauth_tokens` (
+  `id`              VARCHAR(36)  NOT NULL,
+  `user_id`         VARCHAR(36)  NOT NULL,
+  `access_token`    TEXT         NOT NULL,
+  `refresh_token`   TEXT         NULL,
+  `expires_at`      DATETIME     NOT NULL,
+  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user` (`user_id`),
+  INDEX `idx_expires` (`expires_at`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `video_call_escalations` (
   `id`                 VARCHAR(36) NOT NULL,
   `original_call_id`   VARCHAR(36) NOT NULL,
